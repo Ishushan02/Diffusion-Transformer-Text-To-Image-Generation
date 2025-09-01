@@ -3,3 +3,8 @@
 <img src="Images/Architecture.png" width="400" height="450"/>
 - Text to Image Generation Block
 <img src="Images/t2i.png" width="400" height="450"/>
+
+## My Architecture
+- Step 1, I won't use a single Text Encodings, I would use multiple Text Encodings, so as to understand the context of text is richer. It is evident that the reacher your Text Embeddings are better is the Generated Image from it.
+- I am using GPT-Neo, T5, and CLIP
+- 
