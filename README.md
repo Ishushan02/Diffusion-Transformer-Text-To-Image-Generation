@@ -7,4 +7,5 @@
 ## My Architecture
 - Step 1, I won't use a single Text Encodings, I would use multiple Text Encodings, so as to understand the context of text is richer. It is evident that the reacher your Text Embeddings are better is the Generated Image from it.
 - I am using GPT-Neo, T5, and CLIP
-- 
+- Concatenated them, and added a output later of embedding dimension 
+- Outputs the Text Embeddings
