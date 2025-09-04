@@ -11,3 +11,8 @@
 - Outputs the Text Embeddings
 
 - Step 2, Image Encodings
+- Used SDE3 implemented VAE Image Encoder
+- Dependency issue while running up DCAE
+
+- Ste 3, Noise addition to Latents
+- Implementeation of Noise at random timestep t, using DDPM along with cosine beta scheduler
