@@ -1,7 +1,7 @@
 # Text-To-Image-Diffusion-Transformer
 - Implementation of each block from scratch, below is the representation of the Architecture.
 <img src="Images/Architecture.png" width="400" height="450"/>
-- Text to Image Generation Block
+- DiT Block
 <img src="Images/t2i.png" width="400" height="450"/>
 
 ## My Architecture
@@ -16,3 +16,5 @@
 
 - Ste 3, Noise addition to Latents
 - Implementeation of Noise at random timestep t, using DDPM along with cosine beta scheduler
+- Also Implement the Time Embedding Block, with Sinuodial Time Steps so as to include phase information
+- for a Linear batch of Time t, it outputs (batch, Embed Dim) here my Embed Dim is 768
