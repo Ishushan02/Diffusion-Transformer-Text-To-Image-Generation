@@ -18,3 +18,8 @@
 - Implementeation of Noise at random timestep t, using DDPM along with cosine beta scheduler
 - Also Implement the Time Embedding Block, with Sinuodial Time Steps so as to include phase information
 - for a Linear batch of Time t, it outputs (batch, Embed Dim) here my Embed Dim is 768
+
+- Step 4, Patchify
+- The Noised latents are converted in to patches
+- Patches after flattening are added to positional Encodings
+- These both are added up and the resultant is sent to input Layer of DiT block
