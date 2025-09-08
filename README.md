@@ -46,3 +46,6 @@ ScaleShift -> Feed Forward Block -> Scale.. this entire blocks are repeated for 
 - There are also Residual connections in between the blocks
 - The Entire DiT Block is encapsulated in NDiTBlock class
 
+- Step 7, Decoder
+- Actual DiT Architecture only predicts Noise, but what I am doing is predicting noise, generating latents, and decoding latents from it. So, now I have 2 outputs 1 is predicted Noise and the other is predicted original Image from that Noise.. Hence 2 outputs noise and actual Image..
+- Hence I will have 2 losses combined to both of them
