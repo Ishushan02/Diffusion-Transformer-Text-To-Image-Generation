@@ -116,9 +116,18 @@ class PatchEmbedding(nn.Module):
 
         self.patches = imageSize//patchSize * imageSize//patchSize
 
-        self.encode = nn.Conv2d(in_channels = inChannels, out_channels = embedDimension, kernel_size = patchSize, stride = patchSize)
+        self.encode = nn.Conv2d(in_channels = inChannels, out_channels = embedDimension, kernel_size = patchSize, stride = patchSize, bias = True)
+        self.decode = nn.ConvTranspose2d(in_channels=embedDimension, out_channels=inChannels, kernel_size=patchSize, stride=patchSize, bias=True)
         self.positionalEmbedding = nn.Parameter(torch.zeros(1, self.patches, embedDimension))
         nn.init.trunc_normal_(self.positionalEmbedding, std=0.02)
+
+    def unPatchify(self, x):
+        batchSize, NPatches, EmbedDim = x.shape
+        patchPerDim = self.imageSize // self.patchSize
+        x = x.transpose(1, 2).reshape(batchSize, EmbedDim, patchPerDim, patchPerDim)
+        out = self.decode(x)
+        return out
+
 
     def forward(self, latentImage):
 
@@ -128,6 +137,10 @@ class PatchEmbedding(nn.Module):
         # print(flattened.shape, self.positionalEmbedding.shape)
         out = flattened + self.positionalEmbedding
         return out
-    
 
-
+# latent = torch.randn(128, 8, 8).unsqueeze(0)
+# pEmbed = PatchEmbedding(imageSize = 8, patchSize = 2, inChannels = 128, embedDimension = 768)
+# out = pEmbed(latent)
+# unpatched = pEmbed.unPatchify(out)
+# out.shape, unpatched.shape
+# (batchSize, totalPatches, embeddinDimension)
