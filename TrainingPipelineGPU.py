@@ -15,7 +15,7 @@ from tqdm import tqdm
 if(torch.cuda.is_available()):
     device = torch.device('cuda')
 else:
-    device = torch.device('mps')
+    device = torch.device('cpu')
 
 print("Device: ", device)
 
@@ -29,6 +29,8 @@ wandb.init(
     id="4s8pcvm5",  
     resume="allow",
 )
+
+
 
 
 class ImageTextData(Dataset):
@@ -55,7 +57,7 @@ class ImageTextData(Dataset):
 
         caption = random.choice(captions)
 
-        image = Image.open(image_path)
+        image = Image.open(image_path).convert("RGB")
         image = self.transform(image)
         return image, caption
 
@@ -108,7 +110,7 @@ class FinalModel(nn.Module):
 IMAGEHEIGHT = 512
 IMAGEWIDTH = 512
 EMBEDDINGDIM = 768
-BATCHSIZE = 1
+BATCHSIZE = 16
 INCHANNELS = 3
 LATENTSIZE = 8
 LATENTCHANNEL = 128
@@ -138,7 +140,9 @@ transform = transforms.Compose([
     transforms.Normalize([0.5]*3, [0.5]*3)])
 
 torchDataset = ImageTextData(data, transform)
-dataloader = DataLoader(torchDataset, batch_size=BATCHSIZE, shuffle = True, num_workers=8, persistent_workers=True)
+# dataloader = DataLoader(torchDataset, batch_size=BATCHSIZE, shuffle = True, num_workers=8, persistent_workers=True)
+dataloader = DataLoader(torchDataset, batch_size=BATCHSIZE, shuffle = True, num_workers=0)
+
 model = torch.nn.DataParallel(model)
 model.to(device)
 
@@ -178,7 +182,7 @@ for each_epoch in range(start_epoch, epochs):
 
         predictedNoise, noise = model(X, captions, t)
        
-        print(predictedNoise.shape, noise.shape)
+        # print(predictedNoise.shape, noise.shape)
     #     break
     # break
         loss = lossFn(predictedNoise, noise)

@@ -6,7 +6,15 @@ from transformers import AutoTokenizer, AutoModel, T5Tokenizer, T5EncoderModel, 
 from torchvision import transforms
 from diffusers import AutoencoderDC
 from diffusers import DDPMScheduler, DDIMScheduler
-
+import wandb
+from torch.utils.data import DataLoader, Dataset
+import pandas as pd
+from PIL import Image
+import os
+from torch.optim.lr_scheduler import StepLR
+import random
+# from CombinationFunctions import ImageInputToDiT, NDiTModule, Decoder, TimeEmbedding, TextEmbedding
+from tqdm import tqdm
 
 if(torch.cuda.is_available()):
     device = torch.device('cuda')
@@ -30,6 +38,8 @@ class TextEmbedding(nn.Module):
         self.maxSeqLen = maxSequenceLength
         self.embedDimension = embeddingDimension
         self.text_projection = nn.Linear(self.embedDimension, self.embedDimension)
+
+        nn.init.normal_(self.text_projection.weight, std=0.02)
 
     def forward(self, text):
         if isinstance(text, str):
@@ -85,7 +95,8 @@ class TimeEmbedding(nn.Module):
         self.silu = nn.SiLU()
         self.outlayer = nn.Linear(4 * embedDimension, embedDimension)
 
-
+        nn.init.normal_(self.linear1.weight, std=0.02)
+        nn.init.normal_(self.outlayer.weight, std=0.02)
 
     def forward(self, t):
 
@@ -93,7 +104,8 @@ class TimeEmbedding(nn.Module):
         exponent = -math.log(10000) * torch.arange(0, half, dtype=torch.float32) / half
         freq = torch.exp(exponent.to(device))
 
-        timedimMap = t.float().unsqueeze(0) * freq[None]
+        # timedimMap = t.float().unsqueeze(0) * freq[None, :]
+        timedimMap = t[:, None].float() * freq[None, :]
         sinusoidal = torch.cat([torch.cos(timedimMap), torch.sin(timedimMap)], dim = -1)
 
         sinusoidal = self.linear1(sinusoidal)
@@ -161,11 +173,14 @@ class ImageInputToDiT(nn.Module):
 
     def forward(self, x, timestamp):
 
+        batchSize = timestamp.shape[0]
         with torch.no_grad():
             latents = self.dc_ae.encode(x).latent
 
         noise = torch.randn_like(latents)
-        alphaT = self.noiseScheduler.alphas_cumprod[timestamp].view(1, 1, 1, 1)
+        # alphaT = self.noiseScheduler.alphas_cumprod[timestamp].view(1, 1, 1, 1)
+        device = timestamp.device
+        alphaT = self.noiseScheduler.alphas_cumprod.to(device)[timestamp].view(batchSize, 1, 1, 1)
         noisyLatents = torch.sqrt(alphaT) * latents + torch.sqrt(1 - alphaT) * noise
         
         patches = self.patchEmbedding(noisyLatents)
@@ -232,6 +247,8 @@ class ScaleShiftBlock(nn.Module):
         super().__init__()
         self.embedDimension = embedDimension
         self.norm = nn.LayerNorm(embedDimension, elementwise_affine=False, eps=1e-6)
+        # nn.init.ones_(self.norm.weight)
+        # nn.init.zeros_(self.norm.bias)
 
     def forward(self, x, beta, gamma):
         B, N, W = x.shape
@@ -256,6 +273,8 @@ class ScaleBlock(nn.Module):
         super().__init__()
         self.embedDimension = embedDimension
         self.norm = nn.LayerNorm(embedDimension, elementwise_affine=False, eps=1e-6)
+        # nn.init.ones_(self.norm.weight)
+        # nn.init.zeros_(self.norm.bias)
 
     def forward(self, x, alpha):
         B, N, W = x.shape
@@ -281,6 +300,9 @@ class MultiHeadSelfAttention(nn.Module):
         self.drop = nn.Dropout(dropout)
         self.scale = self.headDim ** -0.5 
         self.outProjection = nn.Linear(embedDimension, embedDimension)
+
+        nn.init.zeros_(self.queryKeyValue.weight)
+        nn.init.zeros_(self.outProjection.weight)
 
     def forward(self, x):
         BatchSize, N, EmbedDim = x.shape
@@ -321,6 +343,12 @@ class MultiHeadCrossAttention(nn.Module):
         self.outProjection = nn.Linear(embedDimension, embedDimension)
         self.drop = nn.Dropout(dropout)
         self.scale = self.headDim ** -0.5 
+
+        nn.init.zeros_(self.q.weight)
+        nn.init.zeros_(self.k.weight)
+        nn.init.zeros_(self.v.weight)
+        nn.init.zeros_(self.kv.weight)
+        nn.init.zeros_(self.outProjection.weight)
 
     def forward(self, x, textCondition):
         batch, Nimg, embedDim = x.shape
@@ -364,6 +392,9 @@ class FeedForwardBlock(nn.Module):
         self.linear1 = nn.Linear(embedDimension, embedDimension * 4)
         self.linear2 = nn.Linear(embedDimension * 4, embedDimension)
         self.gelu = nn.GELU()
+
+        nn.init.zeros_(self.linear1.weight)
+        nn.init.zeros_(self.linear2.weight)
 
     def forward(self, x):
         x = self.linear1(x)
@@ -471,3 +502,32 @@ class NDiTModule(nn.Module):
 
 # out = nDit(noisedlatents, textembed, tout)
 # out.shape
+
+
+
+
+
+class Decoder(nn.Module):
+    def __init__(self, embedDimension, latentSize, latentChannels, patchSize, totalTimestamps=1000, beta_schedule = "squaredcos_cap_v2", modelName="mit-han-lab/dc-ae-f64c128-in-1.0-diffusers"):
+        super().__init__()
+        self.dc_ae = AutoencoderDC.from_pretrained(modelName, torch_dtype=torch.float32)
+        self.noiseScheduler = DDPMScheduler(num_train_timesteps=totalTimestamps, beta_schedule=beta_schedule)
+        self.patchEmbedding = PatchEmbedding(imageSize = latentSize, patchSize = patchSize, inChannels = latentChannels, embedDimension = embedDimension)
+
+    def forward(self, x):
+        predictedNoise = self.patchEmbedding.unPatchify(x)
+
+        # alphaT = self.noiseScheduler.alphas_cumprod[timestep].view(1, 1, 1, 1)
+        # originallatents = (noisyImage - torch.sqrt(1 - alphaT) * predictedNoise) / torch.sqrt(alphaT)
+        # originalImage = self.dc_ae.decode(originallatents).sample
+        # originalImage = originalImage * 0.5 + 0.5
+
+        return predictedNoise
+        
+
+# dec = Decoder(embedDimension=784, latentSize=8, latentChannels=128, patchSize=2)
+# noisyImage = torch.randn(1, 128, 8, 8)
+
+# latents = torch.randn(1, 16, 784)
+# predictedNoise = dec(latents)
+# predictedNoise.shape
