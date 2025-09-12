@@ -9,6 +9,9 @@ from PIL import Image
 import os
 from torch.optim.lr_scheduler import StepLR
 import random
+from transformers import AutoTokenizer, AutoModel, T5Tokenizer, T5EncoderModel, CLIPTokenizer, CLIPModel, CLIPProcessor
+import torch.nn.functional as Fn
+
 from CombinationFunctions import ImageInputToDiT, NDiTModule, Decoder, TimeEmbedding, TextEmbedding
 from tqdm import tqdm
 
@@ -19,7 +22,7 @@ else:
 
 print("Device: ", device)
 
-
+os.environ['K8S_TIMEOUT_SECONDS'] = '43200'
 
 wandb.login()
 
@@ -60,6 +63,7 @@ class ImageTextData(Dataset):
         image = Image.open(image_path).convert("RGB")
         image = self.transform(image)
         return image, caption
+
 
 
 # data = pd.read_csv("dataset/COCO2017.csv")
@@ -178,8 +182,11 @@ for each_epoch in range(start_epoch, epochs):
     loop = tqdm(dataloader, f"{each_epoch}/{epochs}")
     ditloss = 0.0
     for X, captions in loop:
-        t = torch.randint(0, T, (BATCHSIZE,), device=device).long()
+        cBatch = X.shape[0]
+        t = torch.randint(0, T, (cBatch,), device=device).long()
 
+        # X = X.to(device)
+        # textEmbeddings = textEmbeddings.to(device)
         predictedNoise, noise = model(X, captions, t)
        
         # print(predictedNoise.shape, noise.shape)
