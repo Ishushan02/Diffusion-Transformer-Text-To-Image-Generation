@@ -29,7 +29,7 @@ wandb.login()
 wandb.init(
     project="diffusion-transformer",  
     name="experiment-1",    
-    id="4s8pcvm5",  
+    id="siv0nm05",  
     resume="allow",
 )
 
@@ -147,9 +147,6 @@ torchDataset = ImageTextData(data, transform)
 # dataloader = DataLoader(torchDataset, batch_size=BATCHSIZE, shuffle = True, num_workers=8, persistent_workers=True)
 dataloader = DataLoader(torchDataset, batch_size=BATCHSIZE, shuffle = True, num_workers=0)
 
-model = torch.nn.DataParallel(model)
-model.to(device)
-
 
 
 
@@ -161,8 +158,11 @@ scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
 
 start_epoch = 0
 
-checkpoint_dir = os.path.join("", "model")
-checkpoint_path = os.path.join(checkpoint_dir, "dit.pt")
+# checkpoint_path = os.path.join("", "model")
+# checkpoint_path = os.path.join(checkpoint_dir, "dit.pt")
+baseDir = os.path.dirname(__file__)
+
+checkpoint_path = os.path.join(baseDir, "model", "dit.pt")
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
@@ -170,11 +170,17 @@ if os.path.exists(checkpoint_path):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     start_epoch = checkpoint['epoch'] + 1
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to(device)
     print(f"Resuming from epoch {start_epoch}")
 else:
     print("Loading pretrained model...")
 
 
+model = torch.nn.DataParallel(model)
+model.to(device)
 
 for each_epoch in range(start_epoch, epochs):
     model.train()
@@ -207,7 +213,8 @@ for each_epoch in range(start_epoch, epochs):
 
     ditloss /= len(dataloader)   
 
-    os.makedirs(checkpoint_path, exist_ok=True)
+    os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
+
     torch.save({
         'epoch': each_epoch,
         'model_state_dict': model.module.state_dict(),
@@ -221,3 +228,4 @@ for each_epoch in range(start_epoch, epochs):
         "Decoder Loss": ditloss
     })
     scheduler.step()
+    
