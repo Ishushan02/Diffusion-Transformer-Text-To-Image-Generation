@@ -50,3 +50,8 @@ ScaleShift -> Feed Forward Block -> Scale.. this entire blocks are repeated for 
 - Actual DiT Architecture only predicts Noise, but what I am doing is predicting noise, generating latents, and decoding latents from it. So, now I have 2 outputs 1 is predicted Noise and the other is predicted original Image from that Noise.. Hence 2 outputs noise and actual Image..
 - Hence I will have 2 losses combined to both of them.
 - Not doin the above approach as this will create 2 objective for a model and model will be unstable and it will be hard to learn the model.
+
+
+- Result After 2 EPochs of Training
+Prompt: "A dog is running towards me"
+<img src="Images/output.png" width="400" height="450"/>
