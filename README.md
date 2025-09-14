@@ -54,4 +54,4 @@ ScaleShift -> Feed Forward Block -> Scale.. this entire blocks are repeated for 
 
 - Result After 2 EPochs of Training
 Prompt: "A dog is running towards me"
-<img src="Images/output.png" width="400" height="450"/>
+<img src="Images/out_E2.png" width="400" height="450"/>
