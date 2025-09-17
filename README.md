@@ -54,6 +54,7 @@ This project describes my implementation of a **Text-to-Image Diffusion Transfor
   ScaleShift → Multi-Head Self-Attention → Scale →
   Multi-Head Cross-Attention → ScaleShift → Feed Forward Block → Scale
   ```
+* We have N such block of DiT
 
 ### Step 7: Decoder & Output
 * Standard DiT predicts **only noise**.
