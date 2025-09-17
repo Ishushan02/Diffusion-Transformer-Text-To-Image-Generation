@@ -65,16 +65,13 @@ This project describes my implementation of a **Text-to-Image Diffusion Transfor
 ---
 
 ## Results
-
-* **After 2 Epochs of Training**
+  * Currently it is in progress of Training
+  ![Training Epochs](Images/trainingEpochs.png)
 
   * Prompt: *"A dog is running towards me"*
   * Output:
 
   ![Generated Output](Images/out_E8.png)
-
-  * Currently it is in progress of Training
-  ![Training Epochs](Images/trainingEpochs.png)
 
 
 ---
