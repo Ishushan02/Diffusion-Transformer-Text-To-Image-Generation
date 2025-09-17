@@ -1,57 +1,80 @@
-# Text-To-Image-Diffusion-Transformer
-- Implementation of each block from scratch, below is the representation of the Architecture.
-<img src="Images/Architecture.png" width="400" height="450"/>
-- PixArt-Alpha Block
-<img src="Images/t2i.png" width="400" height="450"/>
+# Text-To-Image Diffusion Transformer (DiT)
 
-## My Architecture
-- Step 1, I won't use a single Text Encodings, I would use multiple Text Encodings, so as to understand the context of text is richer. It is evident that the reacher your Text Embeddings are better is the Generated Image from it (SD3 uses multiple Text Encoders).
-- I am using GPT-Neo, T5, and CLIP
-- Concatenated them, and added a output later of embedding dimension 
-- Outputs the Text Embeddings
+This project describes my implementation of a **Text-to-Image Diffusion Transformer** from scratch. It outlines the architecture, implementation details of each block, and experimental results. I have few modifications and tweaks in the Architecture, 
 
+---
 
-- Step 2, Image Encodings
-- Used SDE3 implemented VAE Image Encoder
-- Dependency issue while running up DCAE
-- I am able to execute the DCAE Implementation as well
+## Architecture Overview
 
+* **Full Architecture Representation**
+  ![Architecture](Images/architecture.jpg)
 
-- Ste 3, Noise addition to Latents
-- Implementeation of Noise at random timestep t, using DDPM along with cosine beta scheduler
-- Also Implement the Time Embedding Block, with Sinuodial Time Steps so as to include phase information
-- for a Linear batch of Time t, it outputs (batch, Embed Dim) here my Embed Dim is 768
+---
 
+## My Implementation
 
-- Step 4, Patchify
-- The Noised latents are converted in to patches
-- Patches after flattening are added to positional Encodings
-- These both are added up and the resultant is sent to input Layer of DiT block
-- Along with patchification layer, also add Unpatchify dunctions, reversing it with ConvTranspose2D.
+### Step 1: Multiple Text Encoders
+* Instead of a single text encoder, I use **multiple text encoders** for richer semantic understanding.
+* Encoders used: GPT NEO, T5, CLIP
+* Outputs of all encoders are concatenated.
+* Added a projection layer to match the final embedding dimension.
+* Final Output: Text embeddings (batchSize, 2125, Embeding Dimension).
+* The Text Embedding will be an Input to Cross Attention Block of the Transfomer.
 
 
-- Step 5, Encoder Block
-- This block is cummulative of all the steps mentioned above before sending the noised patchified latents
-to Input in to Transformer block.
-- All the methods are cummulates in Encoder Class.
+### Step 2: Image Encodings
+* Use pretrained Architecture and weights of most advance Image Encoder out there as of Today, which is Deep Compression Auto Encoder.
+* It compresses any Image to the image by /64th of it's dimension
+* It is the most recent available State of the Art Image Encoder Available
+* The Input Image of dimension (N, N, 3) is compressed to (N/64, N/ 64, 3)
+* This Image Embeddings are then transferred for Noising.
 
 
-- Step 6, Main DiT Blocks
-- Scale Block and Scale Shift block, this are blocks which is intaken by the shared parameters which is 
-chunked from the Time Embedding Vector.
-- The other Most important blocks are MultiHead Self Attention which is a projection of image latents and itself, 
-whereas the other block MultiHead Cross Attention is a projection of Text Embedding and Image latents.
-- The blocks are something like ScaleShift -> MultiHead Self Attention -> Scale -> Multi Head Cross Attention ->
-ScaleShift -> Feed Forward Block -> Scale.. this entire blocks are repeated for N times
-- There are also Residual connections in between the blocks
-- The Entire DiT Block is encapsulated in NDiTBlock class
+### Step 3: Noise Addition to Latents and patchification
 
-- Step 7, Decoder
-- Actual DiT Architecture only predicts Noise, but what I am doing is predicting noise, generating latents, and decoding latents from it. So, now I have 2 outputs 1 is predicted Noise and the other is predicted original Image from that Noise.. Hence 2 outputs noise and actual Image..
-- Hence I will have 2 losses combined to both of them.
-- Not doin the above approach as this will create 2 objective for a model and model will be unstable and it will be hard to learn the model.
+* Implemented Noise addition at random timestep *t* using DDPM with a cosine beta scheduler.
+* Added Time embedding block:
+* Uses **sinusoidal embeddings** to incorporate phase information.
+* For a batch of timesteps `t`, outputs `(batch, embed_dim)`.
+* Current `embed_dim = 768`.
+* Noised latents are converted into patches each of size `4`.
+* Patches are flattened and added to positional encodings.
+* Resultant embeddings are fed into the DiT input layer.
+* Implemented both patchify and unpatchify (reverse using ConvTranspose2D).
+
+### Step 5: DiT Block
+* Noised Patchified latents are fed to the Scale Shift block, which has parameters beta1, gamma1 shared from Time EMbeding Matrix.
+* Which is then processed with Self Attention Layer, among the Image Latents, and preprocessed in it.
+* After which the preprocessed latents are passed through Scale Block parameterized by alpha1 vector which is chunked from Time Embedding.
+* Next comes the Multi head Cross Attention Block which takes input of Text EMbeddings, Image Latents and also Time Embeddings of that current step
+* The cross attention basically helps in calculation of the dependency of Image latents of Text Embeddings over entire batch of dataset.
+* This output is again followed by a Scale Shift block, a Feed Forward Network and a Scale block which has parameters alpha2, beta2 and gamma2 from Time Embedding Vectors.
+* There are 2 skip connections in between the blocks one prior to the Cross Attention Block and input Latents and the other Next to the Cross Attention Block and output Embeddings.
+  ```
+  ScaleShift → Multi-Head Self-Attention → Scale →
+  Multi-Head Cross-Attention → ScaleShift → Feed Forward Block → Scale
+  ```
+
+### Step 7: Decoder & Output
+* Standard DiT predicts **only noise**.
+* Initially considered training with **two losses** (noise + image reconstruction), but rejected it since it introduces **multiple objectives**, causing instability in learning.
+* So, currently predicting Noise as output from the DiT Block.
+* Now Decoder Module takes Input of a Random Noise and A text, and the Denoising steps starts. We denoise it from 1000->0 backward and remove the predicted Noise at each iteration. 
+* Also considering that at each iteration a little residual of Noise is also added so as to be the output bit Dynamic and oriented towards the text.
+
+---
+
+## Results
+
+* **After 2 Epochs of Training**
+
+  * Prompt: *"A dog is running towards me"*
+  * Output:
+
+  ![Generated Output](Images/out_E8.png)
+
+  * Currently it is in progress of Training
+  ![Training Epochs](Images/trainingEpochs.png)
 
 
-- Result After 2 EPochs of Training
-Prompt: "A dog is running towards me"
-<img src="Images/out_E2.png" width="400" height="450"/>
+---
