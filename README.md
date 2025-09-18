@@ -56,7 +56,7 @@ This project describes my implementation of a **Text-to-Image Diffusion Transfor
   ```
 * We have N such block of DiT
 
-### Step 7: Decoder & Output
+### Step 6: Decoder & Output
 * Standard DiT predicts **only noise**.
 * Initially considered training with **two losses** (noise + image reconstruction), but rejected it since it introduces **multiple objectives**, causing instability in learning.
 * So, currently predicting Noise as output from the DiT Block.
