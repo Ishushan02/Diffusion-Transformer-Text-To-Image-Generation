@@ -69,7 +69,7 @@ This project describes my implementation of a **Text-to-Image Diffusion Transfor
   * Currently it is in progress of Training
   ![Training Epochs](Images/trainingEpochs.png)
 
-  * Prompt: * "Two dogs running away from each other."*
+  * Prompt: *"Two dogs running away from each other."*
   * Output:
 
   ![Generated Output](Images/outE19.png)
