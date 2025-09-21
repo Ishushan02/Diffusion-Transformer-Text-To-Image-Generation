@@ -11,7 +11,6 @@ from torch.optim.lr_scheduler import StepLR
 import random
 from transformers import AutoTokenizer, AutoModel, T5Tokenizer, T5EncoderModel, CLIPTokenizer, CLIPModel, CLIPProcessor
 import torch.nn.functional as Fn
-
 from CombinationFunctions import ImageInputToDiT, NDiTModule, Decoder, TimeEmbedding, TextEmbedding
 from tqdm import tqdm
 
@@ -108,8 +107,14 @@ class FinalModel(nn.Module):
 
 # fModel = FinalModel(8, 128, 768, 2, 1000, 12, 12, 0.2)
 
+def cosineLoss(pred, target):
+    pred = pred.reshape(pred.size(0), -1)
+    target = target.reshape(target.size(0), -1)
 
-
+    cosSim = Fn.cosine_similarity(pred, target, dim=1)
+    loss = 1.0 - cosSim
+    return loss.mean()
+    
 
 IMAGEHEIGHT = 512
 IMAGEWIDTH = 512
@@ -198,7 +203,10 @@ for each_epoch in range(start_epoch, epochs):
         # print(predictedNoise.shape, noise.shape)
     #     break
     # break
-        loss = lossFn(predictedNoise, noise)
+        cosLoss = cosineLoss(predictedNoise, noise)
+        ssimLoss = 1 - cosLoss
+        loss = lossFn(predictedNoise, noise) + 0.1 * cosLoss
+        
         ditloss += loss.item()
    
         
