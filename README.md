@@ -72,7 +72,7 @@ This project describes my implementation of a **Text-to-Image Diffusion Transfor
   * Prompt: *"Two dogs running away from each other."*
   * Output:
 
-  ![Generated Output](Images/outE19.png)
+  ![Generated Output](Images/outE43.png)
 
 
 ---
